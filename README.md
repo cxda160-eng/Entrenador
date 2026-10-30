@@ -4,3 +4,4 @@ Rutina de hipertrofia de 4 días (torso / piernas) con progresión automática, 
 
 App web instalable (PWA): funciona sin conexión y guarda los datos en el teléfono.
 Publicada con GitHub Pages desde la rama `main`, carpeta raíz.
+App: https://cxda160-eng.github.io/Entrenador/
