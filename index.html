@@ -875,6 +875,7 @@ function msg2(el,t){let p=el.nextElementSibling;if(!p||!p.classList.contains('hi
 
 /* ===================== Técnica: figuras animadas ===================== */
 const BENCH=(x,y,w)=>`<rect x="${x}" y="${y}" width="${w}" height="7" rx="2" class="eq"/><line x1="${x+6}" y1="${y+7}" x2="${x+6}" y2="150" class="eqs"/><line x1="${x+w-6}" y1="${y+7}" x2="${x+w-6}" y2="150" class="eqs"/>`;
+const SEATV=`<rect x="82" y="50" width="6" height="62" rx="2" class="eq"/><rect x="82" y="112" width="38" height="6" rx="2" class="eq"/><line x1="100" y1="118" x2="100" y2="150" class="eqs"/>`;
 const STAND={an:[100,148],kn:[101,118],hip:[100,88],sh:[100,48],head:[101,36]};
 const FIG={
   sentadilla:{A:{...STAND,el:[90,58],ha:[96,46]},B:{an:[100,148],kn:[118,122],hip:[90,112],sh:[106,77],head:[109,65],el:[96,86],ha:[102,74]},props:[{t:'plate',at:'sh',off:[-6,1]}]},
@@ -898,6 +899,21 @@ const FIG={
   curl_fem:{nofoot:true,st:BENCH(40,110,110),A:{head:[46,96],sh:[60,104],hip:[100,104],kn:[132,104],an:[162,104],el:[54,120],ha:[42,118]},B:{an:[140,76]},props:[{t:'pad',at:'an'}]},
   ext_cuad:{nofoot:true,st:`<rect x="74" y="112" width="40" height="6" rx="2" class="eq"/><line x1="78" y1="112" x2="72" y2="66" class="eq" stroke-width="6"/><line x1="94" y1="118" x2="94" y2="150" class="eqs"/>`,A:{hip:[88,108],sh:[82,70],head:[81,58],kn:[118,110],an:[120,140],el:[90,90],ha:[100,108]},B:{an:[148,106]},props:[{t:'pad',at:'an'}]},
   gemelos:{nofoot:true,st:`<line x1="96" y1="140" x2="172" y2="83" class="eqs"/><line x1="160" y1="92" x2="160" y2="150" class="eqs"/><rect x="62" y="126" width="38" height="6" rx="2" class="eq"/><line x1="80" y1="132" x2="80" y2="150" class="eqs"/><line x1="86" y1="128" x2="54" y2="86" class="eq" stroke-width="6"/>`,A:{hip:[82,122],sh:[58,92],head:[52,81],kn:[104,102],an:[126,86],el:[76,108],ha:[90,118]},B:{an:[131,82]},props:[{t:'sled'},{t:'toes'}]},
+  press_maq:{st:SEATV,A:{hip:[96,108],sh:[96,68],head:[97,56],kn:[124,110],an:[126,146],el:[84,86],ha:[110,78]},B:{el:[118,74],ha:[142,72]},props:[{t:'lever',from:[128,8]}]},
+  press_inc_maq:{st:SEATV,A:{hip:[96,108],sh:[96,68],head:[97,56],kn:[124,110],an:[126,146],el:[84,84],ha:[108,70]},B:{el:[116,56],ha:[134,38]},props:[{t:'lever',from:[160,96]}]},
+  remo_polea:{nofoot:true,st:`<rect x="58" y="126" width="40" height="6" rx="2" class="eq"/><line x1="78" y1="132" x2="78" y2="150" class="eqs"/><line x1="152" y1="112" x2="152" y2="150" class="eqs"/><line x1="152" y1="150" x2="98" y2="150" class="eqs"/>`,A:{hip:[80,122],sh:[82,82],head:[83,70],kn:[116,106],an:[148,130],el:[106,94],ha:[128,100]},B:{sh:[78,82],head:[77,70],el:[60,96],ha:[90,100]},props:[{t:'cable',from:[152,104]},{t:'vplate'}]},
+  press_hombro_maq:{st:SEATV,A:{hip:[96,108],sh:[96,68],head:[97,56],kn:[124,110],an:[126,146],el:[110,76],ha:[110,54]},B:{el:[104,46],ha:[104,22]},props:[{t:'lever',from:[60,0]}]},
+  pajaros_maq:{front:true,st:`<rect x="76" y="116" width="48" height="6" rx="2" class="eq"/><line x1="100" y1="122" x2="100" y2="150" class="eqs"/>`,A:{head:[100,34],sh:[114,50],hip:[108,90],kn:[112,118],an:[112,148],el:[114,62],ha:[108,58]},B:{el:[136,52],ha:[160,52]},props:[]},
+  triceps_cabeza:{A:{an:[108,148],kn:[106,118],hip:[100,88],an2:[84,148],kn2:[90,120],sh:[110,52],head:[115,41],el:[114,30],ha:[96,42]},B:{el:[118,28],ha:[142,20]},props:[{t:'cable',from:[30,36]}]},
+  prensa_hor:{nofoot:true,st:`<rect x="58" y="116" width="40" height="6" rx="2" class="eq"/><line x1="64" y1="116" x2="50" y2="72" class="eq" stroke-width="6"/><line x1="78" y1="122" x2="78" y2="150" class="eqs"/><line x1="160" y1="128" x2="160" y2="150" class="eqs"/>`,A:{hip:[80,110],sh:[62,76],head:[58,64],el:[76,98],ha:[88,112],kn:[104,82],an:[128,106]},B:{kn:[114,100],an:[150,106]},props:[{t:'vplate'}]},
+  bulgara:{st:BENCH(28,116,38),A:{hip:[104,90],kn:[120,118],an:[118,148],kn2:[88,116],an2:[62,114],sh:[106,50],head:[107,38],el:[106,72],ha:[106,94]},B:{hip:[100,116],kn:[128,120],an:[120,148],kn2:[86,142],an2:[62,114],sh:[103,76],head:[104,64],el:[103,98],ha:[103,120]},props:[{t:'db'}]},
+  curl_fem_sent:{nofoot:true,st:`<rect x="74" y="112" width="40" height="6" rx="2" class="eq"/><line x1="78" y1="112" x2="72" y2="66" class="eq" stroke-width="6"/><line x1="94" y1="118" x2="94" y2="150" class="eqs"/><rect x="104" y="96" width="24" height="7" rx="3" class="eq"/>`,A:{hip:[88,108],sh:[82,70],head:[81,58],kn:[118,110],an:[148,112],el:[90,90],ha:[100,108]},B:{an:[114,140]},props:[{t:'pad',at:'an'}]},
+  gemelos_sent:{nofoot:true,st:`<rect x="70" y="112" width="40" height="6" rx="2" class="eq"/><line x1="88" y1="118" x2="88" y2="150" class="eqs"/><rect x="128" y="140" width="22" height="10" rx="2" class="eq"/>`,A:{hip:[88,108],sh:[86,70],head:[86,58],kn:[124,104],an:[124,136],el:[100,88],ha:[118,98]},B:{kn:[124,96],an:[126,128],ha:[118,90]},props:[{t:'footto',p:[142,140]},{t:'pad',at:'kn'}]},
+  jalon_neutro:{st:`<rect x="82" y="114" width="34" height="6" rx="2" class="eq"/><line x1="100" y1="120" x2="100" y2="150" class="eqs"/><rect x="118" y="99" width="18" height="6" rx="2" class="eq"/>`,A:{hip:[100,110],kn:[128,114],an:[130,146],sh:[96,70],head:[97,58],el:[100,48],ha:[102,26]},B:{el:[92,92],ha:[104,72]},props:[{t:'cable',from:[102,-18]},{t:'latbar',w:8}]},
+  laterales_polea:{front:true,one:true,A:{head:[100,34],sh:[114,50],hip:[108,90],kn:[108,120],an:[108,148],el:[116,72],ha:[110,94]},B:{el:[135,52],ha:[156,54]},props:[{t:'cable',from:[30,146]}]},
+  curl_polea:{A:{...STAND,el:[102,70],ha:[104,92]},B:{ha:[112,54]},props:[{t:'cable',from:[156,146]},{t:'latbar',w:10}]},
+  curl_martillo:{A:{...STAND,el:[102,70],ha:[104,92]},B:{ha:[112,54]},props:[{t:'dbv'}]},
+  hip_thrust_maq:{st:BENCH(36,100,42),A:{sh:[76,96],head:[65,90],hip:[100,128],kn:[130,116],an:[136,148],el:[86,116],ha:[100,124]},B:{hip:[114,96],kn:[138,114],an:[138,148],el:[94,106],ha:[112,92]},props:[{t:'lever',from:[170,140],to:'hip'}]},
   pallof:{A:{...STAND,el:[108,68],ha:[118,60]},B:{el:[120,52],ha:[142,52]},props:[{t:'cable',from:[54,58]}]}
 };
 const HOW={
@@ -951,8 +967,11 @@ function figDraw(k,t){
     if(pr.t==='cable'){back+=`<line x1="${pr.from[0]}" y1="${pr.from[1]}" x2="${P.ha[0]}" y2="${P.ha[1]}" class="cab"/><circle cx="${pr.from[0]}" cy="${pr.from[1]}" r="5" class="eqc"/>`}
     if(pr.t==='plate'){const a=P[pr.at],o=pr.off||[0,0];front+=`<circle cx="${a[0]+o[0]}" cy="${a[1]+o[1]}" r="13" class="plate"/><circle cx="${a[0]+o[0]}" cy="${a[1]+o[1]}" r="2.5" class="hub"/>`}
     if(pr.t==='db'){for(const h of sides)front+=`<line x1="${h[0]-7}" y1="${h[1]}" x2="${h[0]+7}" y2="${h[1]}" class="dbh"/><rect x="${h[0]-10}" y="${h[1]-5}" width="5" height="10" rx="1.5" class="dbw"/><rect x="${h[0]+5}" y="${h[1]-5}" width="5" height="10" rx="1.5" class="dbw"/>`}
-    if(pr.t==='latbar'){front+=`<line x1="${P.ha[0]-24}" y1="${P.ha[1]}" x2="${P.ha[0]+24}" y2="${P.ha[1]}" class="dbh"/>`}
-    if(pr.t==='lever'){back+=`<line x1="${pr.from[0]}" y1="${pr.from[1]}" x2="${P.ha[0]}" y2="${P.ha[1]}" class="eq" stroke-width="4"/><circle cx="${pr.from[0]}" cy="${pr.from[1]}" r="5" class="eqc"/>`;front+=`<line x1="${P.ha[0]}" y1="${P.ha[1]-7}" x2="${P.ha[0]}" y2="${P.ha[1]+7}" class="dbh"/>`}
+    if(pr.t==='latbar'){const w=pr.w||24;front+=`<line x1="${P.ha[0]-w}" y1="${P.ha[1]}" x2="${P.ha[0]+w}" y2="${P.ha[1]}" class="dbh"/>`}
+    if(pr.t==='lever'){const to=P[pr.to||'ha'];back+=`<line x1="${pr.from[0]}" y1="${pr.from[1]}" x2="${to[0]}" y2="${to[1]}" class="eq" stroke-width="4"/><circle cx="${pr.from[0]}" cy="${pr.from[1]}" r="5" class="eqc"/>`;if(!pr.to)front+=`<line x1="${to[0]}" y1="${to[1]-7}" x2="${to[0]}" y2="${to[1]+7}" class="dbh"/>`;else front+=`<circle cx="${to[0]}" cy="${to[1]}" r="6" class="dbw"/>`}
+    if(pr.t==='vplate'){const a=P.an;front+=`<line x1="${a[0]+4}" y1="${a[1]-20}" x2="${a[0]+4}" y2="${a[1]+20}" class="sled"/>`}
+    if(pr.t==='footto'){const a=P.an;body+=`<line x1="${a[0]}" y1="${a[1]}" x2="${pr.p[0]}" y2="${pr.p[1]}" class="limb"/>`}
+    if(pr.t==='dbv'){const h=P.ha;front+=`<line x1="${h[0]}" y1="${h[1]-7}" x2="${h[0]}" y2="${h[1]+7}" class="dbh"/><rect x="${h[0]-5}" y="${h[1]-12}" width="10" height="5" rx="1.5" class="dbw"/><rect x="${h[0]-5}" y="${h[1]+7}" width="10" height="5" rx="1.5" class="dbw"/>`}
     if(pr.t==='pad'){const a=P[pr.at];front+=`<circle cx="${a[0]}" cy="${a[1]}" r="6" class="dbw"/>`}
     if(pr.t==='toes'){const a=P.an;front+=`<line x1="${a[0]}" y1="${a[1]}" x2="${a[0]+8}" y2="${a[1]-9}" class="limb"/>`}
     if(pr.t==='sled'){const a=P.an,p=[.6,.8];front+=`<line x1="${a[0]-p[0]*18}" y1="${a[1]-p[1]*18}" x2="${a[0]+p[0]*18}" y2="${a[1]+p[1]*18}" class="sled"/>`}
@@ -960,6 +979,7 @@ function figDraw(k,t){
   const foot=a=>F.nofoot?'':`<line x1="${a[0]}" y1="${a[1]}" x2="${a[0]+(F.front?0:11)}" y2="${a[1]}" class="limb"/>`;
   if(F.front){
     const L={};for(const j in P)L[j]=mir(P[j]);
+    if(F.one){const P0=pose(k,0);L.el=mir(P0.el);L.ha=mir(P0.ha)}
     body+=pl('limb',[100,47],[100,90])+pl('limb',L.sh,P.sh)+pl('limb',L.hip,P.hip);
     for(const S of [P,L])body+=pl('limb',S.hip,S.kn,S.an)+pl('limb',S.sh,S.el,S.ha);
   }else{
