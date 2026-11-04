@@ -1,5 +1,5 @@
-// Mi Entrenador — service worker: funciona sin conexión
-const VERSION = 'entrenador-v1';
+// Mi Entrenador — service worker: funciona sin conexión y avisa cuando termina el descanso
+const VERSION = 'entrenador-v2';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
@@ -24,4 +24,35 @@ self.addEventListener('fetch', e => {
       return r;
     })));
   }
+});
+
+/* ---------- Aviso de fin de descanso ----------
+   La página manda {type:'timer', end, label} al empezar el descanso y {type:'timer-cancel'} al saltarlo.
+   Si al terminar la app no está a la vista (pantalla bloqueada u otra app), se muestra una notificación. */
+let timerId = 0;
+self.addEventListener('message', e => {
+  const d = e.data || {};
+  if (d.type === 'timer-cancel') { timerId++; return; }
+  if (d.type !== 'timer') return;
+  const id = ++timerId;
+  const wait = Math.max(0, Math.min(d.end - Date.now(), 4.5 * 60 * 1000));
+  e.waitUntil(new Promise(r => setTimeout(r, wait)).then(async () => {
+    if (id !== timerId) return;
+    if (!d.force) {
+      const cs = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      if (cs.some(c => c.visibilityState === 'visible')) return;  // la app está abierta: ya suena el pitido
+    }
+    return self.registration.showNotification('¡Ya! Terminó el descanso', {
+      body: d.label ? 'Próxima serie de ' + String(d.label).toLowerCase() : 'A la próxima serie',
+      tag: 'descanso', renotify: true, vibrate: [300, 120, 300, 120, 300],
+      icon: 'icon-192.png', badge: 'icon-192.png', requireInteraction: false
+    });
+  }));
+});
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(cs => {
+    for (const c of cs) { if ('focus' in c) return c.focus(); }
+    return self.clients.openWindow('./');
+  }));
 });

@@ -126,6 +126,10 @@ textarea{min-height:90px;font-size:12px;font-family:ui-monospace,Menlo,monospace
 .res.hold{background:var(--bg);color:var(--muted)}
 .res.down{background:var(--warn-soft);color:var(--warn)}
 .res.new{background:var(--accent-soft);color:var(--accent)}
+.res.pr{background:var(--accent-soft);color:var(--accent);font-size:12px}
+.prcard{border-left:5px solid var(--good)}
+.notebox{background:var(--warn-soft);border-radius:8px;padding:8px 10px;white-space:pre-wrap}
+.notein{min-height:64px;font-family:var(--font-body);font-size:14px}
 table{width:100%;border-collapse:collapse;font-size:14px}
 th,td{text-align:left;padding:7px 4px;border-top:1px solid var(--line)}
 th{font-size:12px;color:var(--muted);font-weight:500;border-top:none}
@@ -194,8 +198,48 @@ const EX = {
   curl_fem:{n:'Curl femoral acostado',min:10,max:15,inc:2.5,rest:90},
   ext_cuad:{n:'Extensión de cuádriceps',min:12,max:15,inc:2.5,rest:75},
   gemelos:{n:'Gemelos en prensa',min:12,max:20,inc:5,rest:60},
-  pallof:{n:'Pallof press',min:10,max:12,inc:2.5,rest:60,note:'Reps por lado · core sin flexionar la columna'}
+  pallof:{n:'Pallof press',min:10,max:12,inc:2.5,rest:60,note:'Reps por lado · core sin flexionar la columna'},
+  /* Alternativas (para cuando la máquina está ocupada) */
+  press_maq:{n:'Press de pecho en máquina',min:8,max:12,inc:2.5,rest:120},
+  press_inc_maq:{n:'Press inclinado en máquina',min:8,max:12,inc:2.5,rest:120},
+  remo_polea:{n:'Remo sentado en polea',min:8,max:12,inc:2.5,rest:105,note:'Torso erguido y quieto, sin balancear'},
+  press_hombro_maq:{n:'Press de hombros en máquina',min:8,max:12,inc:2.5,rest:120},
+  pajaros_maq:{n:'Aperturas invertidas en máquina',min:12,max:15,inc:2.5,rest:75},
+  triceps_cabeza:{n:'Extensión de tríceps sobre la cabeza en polea',min:10,max:15,inc:2.5,rest:60},
+  prensa_hor:{n:'Prensa horizontal sentado',min:10,max:15,inc:5,rest:120},
+  bulgara:{n:'Sentadilla búlgara con mancuernas',min:8,max:12,inc:2,rest:90,note:'Peso por mancuerna · reps por pierna'},
+  curl_fem_sent:{n:'Curl femoral sentado',min:10,max:15,inc:2.5,rest:90},
+  gemelos_sent:{n:'Gemelos sentado en máquina',min:12,max:20,inc:2.5,rest:60},
+  jalon_neutro:{n:'Jalón con agarre neutro',min:8,max:12,inc:2.5,rest:105},
+  laterales_polea:{n:'Elevación lateral en polea',min:12,max:20,inc:1.25,rest:60,note:'Reps por lado'},
+  curl_polea:{n:'Curl de bíceps en polea',min:10,max:15,inc:2.5,rest:60},
+  curl_martillo:{n:'Curl martillo con mancuernas',min:10,max:15,inc:1,rest:60,note:'Peso por mancuerna'},
+  hip_thrust_maq:{n:'Hip thrust en máquina',min:8,max:12,inc:5,rest:120}
 };
+/* Alternativas que cuidan la zona lumbar igual que el original */
+const ALT = {
+  press_banca:['press_maq','press_inc'],
+  press_inc:['press_inc_maq','press_banca'],
+  remo_maq:['remo_polea','remo_manc'],
+  remo_manc:['remo_maq','remo_polea'],
+  press_hombro:['press_hombro_maq'],
+  face_pull:['pajaros_maq'],
+  triceps:['triceps_cabeza'],
+  prensa:['prensa_hor','bulgara'],
+  curl_fem:['curl_fem_sent'],
+  ext_cuad:['bulgara'],
+  gemelos:['gemelos_sent'],
+  jalon:['jalon_neutro'],
+  laterales:['laterales_polea'],
+  curl:['curl_polea','curl_martillo'],
+  zancadas:['bulgara','prensa'],
+  hip_thrust:['hip_thrust_maq']
+};
+function altsFor(k){
+  if(ALT[k]) return ALT[k].slice();
+  const base=Object.keys(ALT).find(o=>ALT[o].includes(k));
+  return base?[base,...ALT[base]].filter(x=>x!==k):[];
+}
 const PLAN = {
   A:{focus:'Torso · empuje y tirón',ex:['press_banca','remo_maq','press_hombro','face_pull','triceps']},
   B:{focus:'Piernas · prensa y femorales',ex:['prensa','curl_fem','ext_cuad','gemelos','pallof']},
@@ -203,11 +247,15 @@ const PLAN = {
   D:{focus:'Piernas · unilateral y glúteos',ex:['zancadas','hip_thrust','curl_fem','ext_cuad','pallof']}
 };
 const ORDER = ['A','B','C','D'];
-function activeKeys(){const set=new Set();ORDER.forEach(p=>PLAN[p].ex.forEach(k=>set.add(k)));sessions.forEach(s=>(s.items||[]).forEach(it=>{if(EX[it.k])set.add(it.k)}));return [...set]}
+/* Ejercicios del plan aplicando los cambios permanentes ("desde ahora") */
+function planEx(p){const sw=(S&&S.swaps)||{};return PLAN[p].ex.map(k=>sw[k]&&EX[sw[k]]?sw[k]:k)}
+function activeKeys(){const set=new Set();ORDER.forEach(p=>planEx(p).forEach(k=>set.add(k)));sessions.forEach(s=>(s.items||[]).forEach(it=>{if(EX[it.k])set.add(it.k)}));return [...set]}
 const REENTRY = 8;          // sesiones de reingreso
 const DELOAD_EVERY = 20;   // ~5 semanas a 4/sem
-const MUSC={press_banca:{Pecho:1,'Tríceps':.5,Hombros:.5},remo_maq:{Espalda:1,'Bíceps':.5},press_hombro:{Hombros:1,'Tríceps':.5},face_pull:{Hombros:1,Espalda:.5},triceps:{'Tríceps':1},prensa:{'Cuádriceps':1,'Glúteos':.5},curl_fem:{Isquios:1},ext_cuad:{'Cuádriceps':1},gemelos:{Gemelos:1},pallof:{Core:1},press_inc:{Pecho:1,Hombros:.5,'Tríceps':.5},jalon:{Espalda:1,'Bíceps':.5},remo_manc:{Espalda:1,'Bíceps':.5},laterales:{Hombros:1},curl:{'Bíceps':1},zancadas:{'Cuádriceps':1,'Glúteos':1},hip_thrust:{'Glúteos':1,Isquios:.5}};
-const GROUPS=['Pecho','Espalda','Hombros','Bíceps','Tríceps','Cuádriceps','Isquios','Glúteos','Gemelos','Core'];    // sugerir descarga cada ~6 semanas a 3/sem
+const DELOAD_LEN = 4;      // una semana liviana = 4 sesiones
+const BACKUP_DAYS = 14;    // recordatorio de respaldo
+const MUSC={press_maq:{Pecho:1,'Tríceps':.5,Hombros:.5},press_inc_maq:{Pecho:1,Hombros:.5,'Tríceps':.5},remo_polea:{Espalda:1,'Bíceps':.5},press_hombro_maq:{Hombros:1,'Tríceps':.5},pajaros_maq:{Hombros:1,Espalda:.5},triceps_cabeza:{'Tríceps':1},prensa_hor:{'Cuádriceps':1,'Glúteos':.5},bulgara:{'Cuádriceps':1,'Glúteos':1},curl_fem_sent:{Isquios:1},gemelos_sent:{Gemelos:1},jalon_neutro:{Espalda:1,'Bíceps':.5},laterales_polea:{Hombros:1},curl_polea:{'Bíceps':1},curl_martillo:{'Bíceps':1},hip_thrust_maq:{'Glúteos':1,Isquios:.5},press_banca:{Pecho:1,'Tríceps':.5,Hombros:.5},remo_maq:{Espalda:1,'Bíceps':.5},press_hombro:{Hombros:1,'Tríceps':.5},face_pull:{Hombros:1,Espalda:.5},triceps:{'Tríceps':1},prensa:{'Cuádriceps':1,'Glúteos':.5},curl_fem:{Isquios:1},ext_cuad:{'Cuádriceps':1},gemelos:{Gemelos:1},pallof:{Core:1},press_inc:{Pecho:1,Hombros:.5,'Tríceps':.5},jalon:{Espalda:1,'Bíceps':.5},remo_manc:{Espalda:1,'Bíceps':.5},laterales:{Hombros:1},curl:{'Bíceps':1},zancadas:{'Cuádriceps':1,'Glúteos':1},hip_thrust:{'Glúteos':1,Isquios:.5}};
+const GROUPS=['Pecho','Espalda','Hombros','Bíceps','Tríceps','Cuádriceps','Isquios','Glúteos','Gemelos','Core'];
 const MOBILITY = [
   'Caminata o bici suave — 8 a 10 min',
   'Gato-camello — 10 repeticiones',
@@ -223,9 +271,11 @@ const RD = {
 };
 
 /* ===================== Estado ===================== */
-function freshState(){return {v:1,nextIdx:0,done:0,phaseStart:0,sinceDeload:0,deload:0,ex:{}}}
+function freshState(){return {v:2,nextIdx:0,done:0,phaseStart:0,sinceDeload:0,deload:0,ex:{},swaps:{},notes:{},created:Date.now(),lastBackup:0,backupSnooze:0}}
 let S = freshState();
 let sessions = [];       // más reciente primero
+let body = [];           // peso corporal y medidas, más reciente primero
+let confirmCancel = false, finishWarn = null, editId = null, confirmDel = null, notesOpen = {};
 let draft = null;        // sesión en curso
 let view = 'hoy';
 let todayRd = 'ok';
@@ -236,12 +286,19 @@ let confirmReset = false;
 
 const LS = 'entrenador.v1';
 function clone(o){return JSON.parse(JSON.stringify(o))}
-function normalize(s){const f=freshState();return Object.assign(f,s||{},{ex:Object.assign({},(s&&s.ex)||{})})}
+function normalize(s){const f=freshState();if(s&&!s.created)f.created=0;return Object.assign(f,s||{},{ex:Object.assign({},(s&&s.ex)||{}),swaps:Object.assign({},(s&&s.swaps)||{}),notes:Object.assign({},(s&&s.notes)||{})})}
 function lsLoad(){
-  try{const d=JSON.parse(localStorage.getItem(LS)||'null');if(d){S=normalize(d.S);sessions=Array.isArray(d.sessions)?d.sessions:[]}}catch(e){}
+  try{const d=JSON.parse(localStorage.getItem(LS)||'null');if(d){S=normalize(d.S);sessions=Array.isArray(d.sessions)?d.sessions:[];body=Array.isArray(d.body)?d.body:[]}}catch(e){}
   try{const d=JSON.parse(localStorage.getItem(LS+'.draft')||'null');if(d&&d.items)draft=d}catch(e){}
 }
-function lsSave(){try{localStorage.setItem(LS,JSON.stringify({S,sessions}))}catch(e){}}
+function lsSave(){try{localStorage.setItem(LS,JSON.stringify({S,sessions,body}))}catch(e){}}
+function backupData(){return JSON.stringify({S,sessions,body})}
+function markBackup(){S.lastBackup=Date.now();S.backupSnooze=0;lsSave()}
+function needsBackup(){
+  if(sessions.length<3)return false;
+  const ref=Math.max(S.lastBackup||0,S.created||0), now=Date.now();
+  return now-ref>BACKUP_DAYS*864e5 && now>(S.backupSnooze||0);
+}
 function draftSave(){try{draft?localStorage.setItem(LS+'.draft',JSON.stringify(draft)):localStorage.removeItem(LS+'.draft')}catch(e){}}
 
 /* ===================== Guardado en la cuenta (db) ===================== */
@@ -265,6 +322,7 @@ async function initCloud(){
     const [p,q] = await withTimeout(Promise.all([profRef().get(),sessCol().orderBy('ts','desc').limit(800).get()]),10000);
     if(p.exists){
       S = normalize(clone(p.data()).S);
+      {const bd=clone(p.data()).body;if(Array.isArray(bd))body=bd}
       sessions = q.docs.map(d=>Object.assign(clone(d.data()),{id:d.id}));
       lsSave();
     }else if(sessions.length||S.done){
@@ -281,7 +339,7 @@ function persist(newSession){
   const snapS = clone(S);
   queue(async()=>{
     if(newSession) await sessCol().doc(newSession.id).set(stripId(newSession));
-    await profRef().set({S:snapS});
+    await profRef().set({S:snapS,body:clone(body)});
   });
 }
 
@@ -298,7 +356,7 @@ function e1rm(w,r){return w*(1+r/30)}
 function phase(){if(S.deload>0)return'descarga';return (S.done-(S.phaseStart||0))<REENTRY?'reingreso':'progresion'}
 function phaseText(){
   const p=phase();
-  if(p==='descarga') return {pill:'Descarga',cls:'warn',t:`Semana de descarga · quedan ${S.deload} sesiones · 2 series al 85 %`};
+  if(p==='descarga') return {pill:'Descarga',cls:'warn',t:`Semana de descarga · ${S.deload===1?'queda 1 sesión':'quedan '+S.deload+' sesiones'} · 2 series al 85 %`};
   if(p==='reingreso'){const n=S.done-(S.phaseStart||0)+1;return {pill:'Reingreso',cls:'acc',t:`Reingreso · sesión ${n} de ${REENTRY} · 2 series dejando 3–4 reps en reserva`}}
   return {pill:'Hipertrofia',cls:'good',t:'Hipertrofia · 4 series en los 2 primeros ejercicios y 3 en el resto, dejando 1–2 reps en reserva'};
 }
@@ -326,13 +384,19 @@ function beep(){
   try{if(!actx)return;const t0=actx.currentTime;[0,.25,.5].forEach(d=>{const o=actx.createOscillator(),g=actx.createGain();o.frequency.value=880;g.gain.setValueAtTime(.0001,t0+d);g.gain.exponentialRampToValueAtTime(.3,t0+d+.02);g.gain.exponentialRampToValueAtTime(.0001,t0+d+.18);o.connect(g).connect(actx.destination);o.start(t0+d);o.stop(t0+d+.2)})}catch(e){}
   try{navigator.vibrate&&navigator.vibrate([200,100,200])}catch(e){}
 }
-function startTimer(sec,label){tmr={end:Date.now()+sec*1000,total:sec,label,rang:false};clearInterval(tick);tick=setInterval(drawTimer,250);drawTimer()}
-function stopTimer(){tmr=null;clearInterval(tick);$('#timer').hidden=true}
+/* Aviso del sistema cuando termina el descanso con la app en segundo plano o la pantalla bloqueada.
+   Lo programa el service worker; si la app está a la vista, suena el pitido normal. */
+function swPost(msg){try{const c=navigator.serviceWorker&&navigator.serviceWorker.controller;if(c)c.postMessage(msg)}catch(e){}}
+function syncTimerSW(){if(tmr)swPost({type:'timer',end:tmr.end,label:tmr.label});else swPost({type:'timer-cancel'})}
+function askNotif(){try{if('Notification' in window&&Notification.permission==='default')Notification.requestPermission().then(()=>{render()})}catch(e){}}
+function notifState(){if(!('Notification' in window)||!('serviceWorker' in navigator))return 'no';return Notification.permission}
+function startTimer(sec,label){tmr={end:Date.now()+sec*1000,total:sec,label,rang:false};clearInterval(tick);tick=setInterval(drawTimer,250);drawTimer();syncTimerSW()}
+function stopTimer(){tmr=null;clearInterval(tick);$('#timer').hidden=true;syncTimerSW()}
 function drawTimer(){
   const el=$('#timer');if(!tmr){el.hidden=true;return}
   const left=(tmr.end-Date.now())/1000, end=left<=0;
   if(end&&!tmr.rang){tmr.rang=true;beep()}
-  if(left<-60){stopTimer();return}
+  if(left<-60){tmr=null;clearInterval(tick);el.hidden=true;return}
   el.hidden=false;
   const pct=end?100:Math.min(100,100*(1-left/tmr.total));
   el.innerHTML=`<div class="timer-in${end?' end':''}" role="timer" aria-live="off">
@@ -344,42 +408,67 @@ function drawTimer(){
 
 /* ===================== Sesión ===================== */
 function startSession(){
-  audio();
+  audio();askNotif();
   const plan=todayPlan||ORDER[S.nextIdx%ORDER.length];
-  const items=PLAN[plan].ex.map((k,ix)=>{const p=presc(k,todayRd,ix<2);return {k,n:p.sets,target:p.target,rir:p.rir,rest:p.rest,sets:Array.from({length:p.sets},()=>({w:p.w,r:p.target,done:false}))}});
-  const pr=presc(PLAN[plan].ex[0],todayRd);
+  const items=planEx(plan).map((k,ix)=>makeItem(k,ix<2,todayRd));
+  const pr=presc(planEx(plan)[0],todayRd);
   draft={id:'s'+Date.now(),ts:Date.now(),plan,rd:todayRd,prog:pr.prog,phase:phase(),items};
+  confirmCancel=false;finishWarn=null;
   draftSave();view='hoy';render();window.scrollTo(0,0);
 }
-function finishSession(){
+function makeItem(k,main,rd){const p=presc(k,rd,main);return {k,main,n:p.sets,target:p.target,rir:p.rir,rest:p.rest,sets:Array.from({length:p.sets},()=>({w:p.w,r:p.target,done:false}))}}
+
+/* Aplica el resultado de un ejercicio sobre su estado previo. Devuelve el estado nuevo y el mensaje. */
+function applyItem(k,sets,n,prog,rd,before){
+  const e=EX[k], st=Object.assign({w:null,fails:0,last:null},before||{});
+  const w=sets[0].w;let res;
+  if(st.w==null){
+    st.w=prog?w:r05(w/({poco:.9,guardia:.8}[rd]||1));
+    st.last=prog?sets.map(s=>s.r):null;
+    res={c:'new',t:`Peso base: ${fmt(st.w)} kg`};
+  }else if(!prog){
+    res={c:'hold',t:`Sin cambios · sigue en ${fmt(st.w)} kg`};
+  }else{
+    const allTop=sets.length>=n&&sets.every(s=>s.r>=e.max&&s.w>=w);
+    if(allTop){st.w=w+e.inc;st.fails=0;st.last=null;res={c:'up',t:`Sube a ${fmt(st.w)} kg`}}
+    else if(sets.some(s=>s.r<e.min)){
+      st.fails=(st.fails||0)+1;
+      if(st.fails>=2){st.w=r05(w*.9);st.fails=0;st.last=null;res={c:'down',t:`Baja a ${fmt(st.w)} kg`}}
+      else{st.w=w;st.last=sets.map(s=>s.r);res={c:'hold',t:`Repetí ${fmt(w)} kg · no llegaste al mínimo`}}
+    }else{st.w=w;st.fails=0;st.last=sets.map(s=>s.r);res={c:'hold',t:`Mantener ${fmt(w)} kg · buscá +1 rep`}}
+  }
+  return {st,res};
+}
+/* Mejor 1RM estimado de un ejercicio en el historial (sin contar una sesión) */
+function bestE1rm(k,skipId){let b=0;for(const s of sessions){if(s.id===skipId)continue;const it=(s.items||[]).find(x=>x.k===k);if(it)for(const x of it.sets||[])if(x.w!=null&&x.r>0)b=Math.max(b,e1rm(x.w,x.r))}return b}
+function itemBest(sets){return sets.reduce((a,b)=>e1rm(b.w,b.r)>e1rm(a.w,a.r)?b:a)}
+function calcPRs(sess){
+  const prs={};
+  for(const it of sess.items){const prev=bestE1rm(it.k,sess.id);if(!prev)continue;const b=itemBest(it.sets),v=e1rm(b.w,b.r);if(v>prev+0.01)prs[it.k]={w:b.w,r:b.r,e:Math.round(v*2)/2,prev:Math.round(prev*2)/2}}
+  return prs;
+}
+function validSets(it){return it.sets.filter(s=>s.done&&s.r>0&&s.w!=null)}
+function finishSession(force){
+  const invalid=draft.items.reduce((a,it)=>a+it.sets.filter(s=>s.done&&!(s.r>0&&s.w!=null)).length,0);
+  const anyValid=draft.items.some(it=>validSets(it).length);
+  if(!anyValid){finishWarn={t:'none'};render();scrollToFinish();return}
+  if(invalid&&!force){finishWarn={t:'invalid',n:invalid};render();scrollToFinish();return}
+  finishWarn=null;
   const res={};let vol=0,nsets=0;
   const items=[];
   for(const it of draft.items){
-    const e=EX[it.k], done=it.sets.filter(s=>s.done&&s.r>0&&s.w!=null);
+    const done=validSets(it);
     if(!done.length) continue;
     done.forEach(s=>{vol+=s.w*s.r;nsets++});
-    items.push({k:it.k,sets:done.map(s=>({w:s.w,r:s.r}))});
-    const st=Object.assign({w:null,fails:0,last:null},S.ex[it.k]);
-    const w=done[0].w;
-    if(st.w==null){
-      st.w=draft.prog?w:r05(w/({poco:.9,guardia:.8}[draft.rd]||1));
-      st.last=draft.prog?done.map(s=>s.r):null;
-      res[it.k]={c:'new',t:`Peso base: ${fmt(st.w)} kg`};
-    }else if(!draft.prog){
-      res[it.k]={c:'hold',t:`Sin cambios · sigue en ${fmt(st.w)} kg`};
-    }else{
-      const allTop=done.length>=it.n&&done.every(s=>s.r>=e.max&&s.w>=w);
-      if(allTop){st.w=w+e.inc;st.fails=0;st.last=null;res[it.k]={c:'up',t:`Sube a ${fmt(st.w)} kg`}}
-      else if(done.some(s=>s.r<e.min)){
-        st.fails=(st.fails||0)+1;
-        if(st.fails>=2){st.w=r05(w*.9);st.fails=0;st.last=null;res[it.k]={c:'down',t:`Baja a ${fmt(st.w)} kg`}}
-        else{st.w=w;st.last=done.map(s=>s.r);res[it.k]={c:'hold',t:`Repetí ${fmt(w)} kg · no llegaste al mínimo`}}
-      }else{st.w=w;st.fails=0;st.last=done.map(s=>s.r);res[it.k]={c:'hold',t:`Mantener ${fmt(w)} kg · buscá +1 rep`}}
-    }
-    S.ex[it.k]=st;
+    const before=S.ex[it.k]?clone(S.ex[it.k]):null;
+    const sets=done.map(s=>({w:s.w,r:s.r}));
+    const out=applyItem(it.k,sets,it.n,draft.prog,draft.rd,before);
+    items.push({k:it.k,n:it.n,sets,before});
+    res[it.k]=out.res;S.ex[it.k]=out.st;
   }
-  if(!items.length){return}
-  const sess={id:draft.id,ts:draft.ts,plan:draft.plan,rd:draft.rd,prog:draft.prog,phase:draft.phase,items,res,vol:Math.round(vol),nsets};
+  const sess={id:draft.id,ts:draft.ts,plan:draft.plan,rd:draft.rd,prog:draft.prog,phase:draft.phase,items,res,vol:Math.round(vol),nsets,
+    ctr:{nextIdx:S.nextIdx,deload:S.deload,sinceDeload:S.sinceDeload}};
+  sess.prs=calcPRs(sess);
   S.nextIdx=(Math.max(0,ORDER.indexOf(draft.plan))+1)%ORDER.length;
   S.done++;
   if(S.deload>0){S.deload--;if(S.deload===0)S.sinceDeload=0}else S.sinceDeload++;
@@ -390,6 +479,128 @@ function finishSession(){
 function logMobility(){
   const sess={id:'s'+Date.now(),ts:Date.now(),plan:'MOV',rd:todayRd,prog:false,items:[],res:{},vol:0,nsets:0};
   sessions.unshift(sess);persist(sess);todayRd='ok';view='historial';render();
+}
+function scrollToFinish(){const b=document.querySelector('[data-act=finish]');if(b)b.scrollIntoView({block:'center'})}
+
+/* ===================== Editar / borrar sesiones ===================== */
+/* ¿Es esta la sesión más reciente que incluye el ejercicio k? Solo ahí se recalcula el peso. */
+function isLatestFor(id,k){for(const s of sessions){if((s.items||[]).some(x=>x.k===k))return s.id===id}return false}
+function canRecalc(id,it){return Object.prototype.hasOwnProperty.call(it,'before')&&isLatestFor(id,it.k)}
+function restoreEx(k,before){if(before)S.ex[k]=clone(before);else delete S.ex[k]}
+function cloudDel(id){if(cloud.db)queue(async()=>{await sessCol().doc(String(id)).delete()})}
+function deleteSession(id){
+  const ix=sessions.findIndex(s=>s.id===id);if(ix<0)return;
+  const sess=sessions[ix];
+  if(sess.plan!=='MOV'){
+    for(const it of sess.items||[]) if(canRecalc(id,it)) restoreEx(it.k,it.before);
+    const latest=trainingSessions()[0];
+    if(latest&&latest.id===id&&sess.ctr){S.nextIdx=sess.ctr.nextIdx;S.deload=sess.ctr.deload;S.sinceDeload=sess.ctr.sinceDeload}
+    else if(S.sinceDeload>0&&!S.deload)S.sinceDeload--;
+    S.done=Math.max(0,S.done-1);
+  }
+  sessions.splice(ix,1);
+  if(summary&&summary.id===id)summary=null;
+  cloudDel(id);persist();
+}
+function saveEdit(id){
+  const sess=sessions.find(s=>s.id===id);if(!sess)return;
+  const items=[];let vol=0,nsets=0;
+  sess.items.forEach((it,i)=>{
+    const sets=[];
+    it.sets.forEach((x,j)=>{const w=num(($('#ew-'+i+'-'+j)||{}).value),r=num(($('#er-'+i+'-'+j)||{}).value);if(w!=null&&r>0)sets.push({w,r:Math.round(r)})});
+    const recalc=canRecalc(id,it);
+    if(!sets.length){if(recalc)restoreEx(it.k,it.before);delete sess.res[it.k];return}
+    sets.forEach(s=>{vol+=s.w*s.r;nsets++});
+    const ni=Object.assign({},it,{sets});
+    if(recalc){const out=applyItem(it.k,sets,it.n||sets.length,sess.prog,sess.rd,it.before);S.ex[it.k]=out.st;sess.res[it.k]=out.res}
+    items.push(ni);
+  });
+  if(!items.length){deleteSession(id);return}
+  sess.items=items;sess.vol=Math.round(vol);sess.nsets=nsets;
+  sess.prs=calcPRs(sess);
+  persist(sess);
+}
+function openEdit(id){
+  const s=sessions.find(x=>x.id===id);if(!s)return;
+  editId=id;confirmDel=null;
+  const mov=s.plan==='MOV';
+  const blocks=(s.items||[]).map((it,i)=>`<div style="display:flex;flex-direction:column;gap:6px">
+      <b>${EX[it.k]?EX[it.k].n:esc(it.k)}</b>
+      <div class="sets" style="grid-template-columns:auto 1fr 1fr"><span></span><span class="lab">kg</span><span class="lab">reps</span>
+      ${it.sets.map((x,j)=>`<span class="setn">${j+1}</span><input id="ew-${i}-${j}" inputmode="decimal" aria-label="Kilos serie ${j+1}" value="${x.w!=null?fmt(x.w):''}"><input id="er-${i}-${j}" inputmode="numeric" aria-label="Reps serie ${j+1}" value="${x.r!=null?esc(x.r):''}">`).join('')}
+      </div></div>`).join('');
+  const anyRecalc=(s.items||[]).some(it=>canRecalc(id,it));
+  $('#sheet').innerHTML=`<div class="sheet-in" role="dialog" aria-modal="true" aria-labelledby="edT">
+    <div class="row between"><h3 id="edT">${mov?'Movilidad':'Sesión '+esc(s.plan)} · ${esc(dLabel(s.ts))}</h3><button class="btn sec small" data-act="edclose" aria-label="Cerrar">✕</button></div>
+    ${mov?'<p class="small muted">Sesión de movilidad, sin series para editar.</p>':`<p class="small muted">Corregí kilos o repeticiones. Para quitar una serie, borrá sus kilos. ${anyRecalc?'Como es tu última vez en estos ejercicios, el peso de la próxima sesión se recalcula.':'Es una sesión vieja: se corrige el historial y los gráficos, pero no los pesos actuales (esos los ajustás en Ajustes).'}</p>
+    ${blocks}
+    <button class="btn" data-act="edsave">Guardar cambios</button>`}
+    <button class="btn danger" data-act="eddel" id="eddel">Borrar esta sesión</button>
+  </div>`;
+  $('#sheet').hidden=false;
+}
+function closeEdit(){editId=null;confirmDel=null;$('#sheet').hidden=true;$('#sheet').innerHTML=''}
+
+/* ===================== Cambiar ejercicio ===================== */
+function openSwap(i){
+  const it=draft.items[i], alts=altsFor(it.k), anyDone=it.sets.some(s=>s.done);
+  const orig=PLAN[draft.plan].ex[i];
+  $('#sheet').innerHTML=`<div class="sheet-in" role="dialog" aria-modal="true" aria-labelledby="swT">
+    <div class="row between"><h3 id="swT">Cambiar ${esc(EX[it.k].n.toLowerCase())}</h3><button class="btn sec small" data-act="swclose" aria-label="Cerrar">✕</button></div>
+    ${anyDone?'<p class="banner">Ya marcaste series de este ejercicio. Desmarcalas si querés cambiarlo.</p>':''}
+    <p class="small muted">Opciones que trabajan lo mismo y cuidan igual la zona lumbar. Cada una lleva su propio peso y progresión.</p>
+    <div class="opts">${alts.map(k=>{const st=S.ex[k];return `<div class="opt" style="flex-direction:column;gap:8px"><span style="color:inherit"><b>${EX[k].n}</b><span>${EX[k].min}–${EX[k].max} reps · ${st&&st.w!=null?'último peso '+fmt(st.w)+' kg':'primera vez'}${k===orig?' · el original del plan':''}</span></span>
+      <div class="row"><button class="btn small" data-act="swap" data-i="${i}" data-k="${k}" data-perm="0" ${anyDone?'disabled':''}>Solo hoy</button><button class="btn sec small" data-act="swap" data-i="${i}" data-k="${k}" data-perm="1" ${anyDone?'disabled':''}>Desde ahora</button></div></div>`}).join('')}</div>
+    <p class="small muted">"Desde ahora" lo reemplaza en todas las sesiones donde aparece. Lo podés deshacer en Ajustes.</p>
+  </div>`;
+  $('#sheet').hidden=false;
+}
+function doSwap(i,k,perm){
+  const it=draft.items[i];if(!it||it.sets.some(s=>s.done))return;
+  draft.items[i]=makeItem(k,it.main!=null?it.main:i<2,draft.rd);
+  if(perm){const orig=PLAN[draft.plan].ex[i];if(k===orig)delete S.swaps[orig];else S.swaps[orig]=k;persist()}
+  draftSave();closeSheet();render();
+}
+function closeSheet(){howK=null;editId=null;confirmDel=null;cancelAnimationFrame(howRaf);$('#sheet').hidden=true;$('#sheet').innerHTML=''}
+
+/* ===================== Peso corporal ===================== */
+function addBody(){
+  const kg=num(($('#bw-kg')||{}).value),cin=num(($('#bw-cin')||{}).value),bra=num(($('#bw-bra')||{}).value);
+  if(kg==null&&cin==null&&bra==null)return false;
+  body.unshift({ts:Date.now(),kg,cin,bra});persistBody();return true;
+}
+function persistBody(){lsSave();if(cloud.db){const b=clone(body);queue(async()=>{await profRef().set({S:clone(S),body:b})})}}
+function bodyChart(){
+  const h=body.filter(b=>b.kg!=null).slice().reverse();
+  if(h.length<2)return '';
+  const W=520,H=150,pl=40,pr=18,pt=14,pb=24;
+  let lo=Math.min(...h.map(p=>p.kg)),hi=Math.max(...h.map(p=>p.kg));
+  const span=Math.max(hi-lo,2),step=[.5,1,2,5,10].find(s=>span/s<=4)||10;
+  lo=Math.floor((lo-step*.3)/step)*step;hi=Math.ceil((hi+step*.3)/step)*step;
+  const t0=h[0].ts,t1=h[h.length-1].ts||t0+1;
+  const x=t=>pl+(W-pl-pr)*((t-t0)/Math.max(1,t1-t0)),y=v=>pt+(H-pt-pb)*(1-(v-lo)/(hi-lo));
+  let grid='';for(let v=lo;v<=hi+1e-9;v+=step)grid+=`<line x1="${pl}" x2="${W-pr}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)"/><text x="${pl-8}" y="${y(v)+4}" text-anchor="end" font-size="11" fill="var(--muted)">${fmt(v)}</text>`;
+  const line=h.map((p,i)=>`${i?'L':'M'}${x(p.ts).toFixed(1)},${y(p.kg).toFixed(1)}`).join('');
+  const lp=h[h.length-1];
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Peso corporal, último ${fmt(lp.kg)} kilos">${grid}
+    <path d="${line}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/>
+    ${h.map(p=>`<circle cx="${x(p.ts)}" cy="${y(p.kg)}" r="3" fill="var(--accent)"/>`).join('')}
+    <text x="${pl}" y="${H-6}" font-size="11" fill="var(--muted)">${esc(dLabel(h[0].ts,{day:'numeric',month:'short'}))}</text>
+    <text x="${W-pr}" y="${H-6}" font-size="11" fill="var(--muted)" text-anchor="end">${esc(dLabel(lp.ts,{day:'numeric',month:'short'}))}</text></svg>`;
+}
+function vBody(){
+  const kgs=body.filter(b=>b.kg!=null);
+  let trend='';
+  if(kgs.length>=2){const last=kgs[0],ref=kgs.find(b=>b.ts<=last.ts-28*864e5)||kgs[kgs.length-1];const d=last.kg-ref.kg,days=Math.max(1,Math.round((last.ts-ref.ts)/864e5));
+    trend=`<p class="small muted">${d>0?'+':''}${fmt(Math.round(d*10)/10)} kg en ${days} días. Para ganar músculo con poca grasa, una suba de 0,25 a 0,5 kg por semana suele ser buen ritmo.</p>`}
+  const rows=body.slice(0,8).map(b=>`<div class="li" style="align-items:center"><span class="small">${esc(dLabel(b.ts,{day:'numeric',month:'short'}))}</span><span class="num small">${[b.kg!=null?fmt(b.kg)+' kg':'',b.cin!=null?'cintura '+fmt(b.cin)+' cm':'',b.bra!=null?'brazo '+fmt(b.bra)+' cm':''].filter(Boolean).join(' · ')}</span><button class="btn sec small" data-act="bdel" data-ts="${b.ts}" aria-label="Borrar medida">✕</button></div>`).join('');
+  return `<section class="card"><div class="row between"><h3>Peso corporal y medidas</h3>${kgs[0]?`<span class="pill num">${fmt(kgs[0].kg)} kg</span>`:''}</div>
+    <p class="small muted">Pesate en ayunas, 1 o 2 veces por semana. Cintura a la altura del ombligo; brazo contraído, en la parte más ancha.</p>
+    <div class="row" style="flex-wrap:nowrap"><input class="inp" id="bw-kg" inputmode="decimal" placeholder="kg" aria-label="Peso en kilos"><input class="inp" id="bw-cin" inputmode="decimal" placeholder="cintura cm" aria-label="Cintura en centímetros"><input class="inp" id="bw-bra" inputmode="decimal" placeholder="brazo cm" aria-label="Brazo en centímetros"></div>
+    <button class="btn sec" data-act="badd">Guardar medida</button>
+    ${bodyChart()}${trend}
+    ${rows?`<div class="list">${rows}</div>`:''}
+  </section>`;
 }
 
 /* ===================== Vistas ===================== */
@@ -427,8 +638,9 @@ function vHoy(){
   const plan=todayPlan||ORDER[S.nextIdx%ORDER.length], ph=phaseText();
   const tr=trainingSessions(), week=tr.filter(s=>s.ts>Date.now()-7*864e5).length;
   const last=tr[0];
-  const deloadBanner = (S.sinceDeload>=DELOAD_EVERY&&!S.deload)?`<div class="banner"><b>Llevás ${S.sinceDeload} sesiones sin descargar.</b><span>Una semana liviana (3 sesiones, 2 series al 85 %) ayuda a recuperar articulaciones y seguir progresando.</span><button class="btn small sec" data-act="deload">Empezar semana de descarga</button></div>`:'';
-  const preview=PLAN[plan].ex.map((k,ix)=>{const p=presc(k,todayRd,ix<2),e=EX[k];
+  const deloadBanner = (S.sinceDeload>=DELOAD_EVERY&&!S.deload)?`<div class="banner"><b>Llevás ${S.sinceDeload} sesiones sin descargar.</b><span>Una semana liviana (${DELOAD_LEN} sesiones, 2 series al 85 %) ayuda a recuperar articulaciones y seguir progresando.</span><button class="btn small sec" data-act="deload">Empezar semana de descarga</button></div>`:'';
+  const backupBanner = needsBackup()?`<div class="banner"><b>Hace rato que no guardás un respaldo.</b><span>Tus ${sessions.length} sesiones y pesos viven solo en este celular. Si cambiás de teléfono o se borran los datos del navegador, los perdés. Descargá el archivo y guardalo en Drive o mandátelo por mail.</span><div class="row"><button class="btn small" data-act="download">Descargar respaldo</button><button class="btn small sec" data-act="bsnooze">En 3 días</button></div></div>`:'';
+  const preview=planEx(plan).map((k,ix)=>{const p=presc(k,todayRd,ix<2),e=EX[k];
     return `<div class="li"><button class="exlink" data-act="how" data-k="${k}">${e.n}</button><span class="num muted">${p.sets} × ${p.prog?e.min+'–'+e.max:p.target} · ${p.w!=null?fmt(p.w)+' kg':'elegí peso'}</span></div>`}).join('');
   return `${topBar()}
   <div class="stats">
@@ -436,7 +648,7 @@ function vHoy(){
     <div class="stat"><b>${week}</b><span>últimos 7 días</span></div>
     <div class="stat"><b>${last?esc(dLabel(last.ts,{day:'numeric',month:'short'})):'—'}</b><span>última sesión</span></div>
   </div>
-  ${deloadBanner}
+  ${backupBanner}${deloadBanner}
   <section class="card hero">
     <div class="row between"><p class="eyebrow">Próxima sesión</p><span class="pill ${ph.cls}">${ph.pill}</span></div>
     <div class="row between" style="align-items:flex-end">
@@ -467,42 +679,62 @@ function vSession(){
     const lastS=sessions.find(s=>s.items&&s.items.some(x=>x.k===it.k));
     const lastI=lastS&&lastS.items.find(x=>x.k===it.k);
     const lastTxt=lastI?`Última vez: ${lastI.sets.map(s=>fmt(s.w)+'×'+s.r).join(' · ')}`:(st&&st.w!=null?'':'Primera vez: elegí un peso que te permita ~12 reps cómodas.');
+    const pr=bestE1rm(it.k);
+    const note=(S.notes||{})[it.k]||'', open=notesOpen[it.k];
+    const hasAlt=altsFor(it.k).length>0;
     const rows=it.sets.map((s,j)=>`
       <span class="setn">${j+1}</span>
       <input class="${s.done?'done-row':''}" id="w-${i}-${j}" aria-label="Kilos serie ${j+1}" inputmode="decimal" data-i="${i}" data-s="${j}" data-f="w" value="${s.w!=null?fmt(s.w):''}" placeholder="kg">
       <input class="${s.done?'done-row':''}" id="r-${i}-${j}" aria-label="Reps serie ${j+1}" inputmode="numeric" data-i="${i}" data-s="${j}" data-f="r" value="${s.r!=null?s.r:''}" placeholder="reps">
       <button class="check" data-act="done" data-i="${i}" data-s="${j}" aria-pressed="${s.done}" aria-label="Serie ${j+1} hecha">✓</button>`).join('');
     return `<section class="card">
-      <div class="ex-head"><div><h3>${e.n}</h3>${e.note?`<p class="small muted">${e.note}</p>`:''}<button class="howbtn" data-act="how" data-k="${it.k}">¿Cómo se hace?</button></div><span class="pill num">${it.n} × ${d.prog?e.min+'–'+e.max:it.target}</span></div>
-      <p class="small muted num">Objetivo: ${d.prog?`${it.target}–${e.max} reps`:`${it.target} reps`} · reserva ${it.rir} · descanso ${mmss(it.rest)}${lastTxt?'<br>'+esc(lastTxt):''}</p>
+      <div class="ex-head"><div><h3>${e.n}</h3>${e.note?`<p class="small muted">${e.note}</p>`:''}
+        <div class="row" style="gap:14px;margin-top:2px"><button class="howbtn" data-act="how" data-k="${it.k}">¿Cómo se hace?</button>${hasAlt?`<button class="howbtn" data-act="swopen" data-i="${i}">Cambiar</button>`:''}<button class="howbtn" data-act="note" data-k="${it.k}">${note?'Editar nota':'Nota'}</button></div></div>
+        <span class="pill num">${it.n} × ${d.prog?e.min+'–'+e.max:it.target}</span></div>
+      ${note&&!open?`<p class="notebox small">📝 ${esc(note)}</p>`:''}
+      ${open?`<textarea class="notein" data-note="${it.k}" aria-label="Nota de ${esc(e.n)}" placeholder="Ej.: asiento en 4, agarre más cerrado, molestó el hombro…">${esc(note)}</textarea>`:''}
+      <p class="small muted num">Objetivo: ${d.prog?`${it.target}–${e.max} reps`:`${it.target} reps`} · reserva ${it.rir} · descanso ${mmss(it.rest)}${lastTxt?'<br>'+esc(lastTxt):''}${pr?`<br>Tu récord: 1RM estimado ${fmt(Math.round(pr*2)/2)} kg`:''}</p>
       <div class="sets"><span></span><span class="lab">kg</span><span class="lab">reps</span><span></span>${rows}</div>
       <div class="row"><button class="btn sec small" data-act="addset" data-i="${i}">+ Serie</button>${it.sets.length>1?`<button class="btn sec small" data-act="delset" data-i="${i}">− Serie</button>`:''}</div>
     </section>`}).join('');
+  const nst=notifState();
+  const notifHint = nst==='default'?`<div class="banner"><span>Activá las notificaciones para que te avise cuando termina el descanso aunque tengas el celular bloqueado.</span><button class="btn small sec" data-act="notif">Activar avisos</button></div>`
+    : nst==='denied'?`<p class="small muted">Los avisos de descanso están bloqueados en el navegador: el pitido solo suena con la app abierta.</p>`:'';
+  const fw=finishWarn;
+  const warn = !fw?'' : fw.t==='none'
+    ? `<div class="banner" role="alert"><b>No hay series para guardar.</b><span>Marcá con ✓ al menos una serie que tenga kilos y repeticiones.</span></div>`
+    : `<div class="banner" role="alert"><b>${fw.n===1?'Hay 1 serie marcada':'Hay '+fw.n+' series marcadas'} sin kilos o sin reps.</b><span>${fw.n===1?'No se va a guardar':'No se van a guardar'}. Completalas, o terminá igual.</span><button class="btn small sec" data-act="finishforce">Terminar igual</button></div>`;
   return `${topBar()}
   <section class="card hero">
     <div class="row between"><p class="eyebrow">En curso · ${esc(dLabel(d.ts))}</p><span class="pill ${d.rd==='ok'?'good':'warn'}">${RD[d.rd].t}</span></div>
     <h2>Sesión ${esc(d.plan)}</h2>
     <p class="small muted num">${doneSets} de ${total} series hechas${d.prog?'':' · sesión ajustada, no cambia los pesos'}${ph==='reingreso'?' · fase de reingreso':''}</p>
   </section>
+  ${notifHint}
   <section class="card" style="gap:8px"><h3>Calentamiento · 10 min</h3>
     <ol class="mob"><li>5 min de bici o elíptica a ritmo suave.</li><li>Movilidad de hombros y cadera: 10 círculos de brazos, 10 aperturas de cadera por lado.</li><li>Antes del primer ejercicio: 2 series de aproximación, sin registrar.${(()=>{const w=d.items[0]&&d.items[0].sets[0]&&d.items[0].sets[0].w;return w?` En ${EX[d.items[0].k].n.toLowerCase()}: ${fmt(r05(w*.5))} kg × 10 y ${fmt(r05(w*.75))} kg × 5.`:' Al 50 % × 10 reps y al 75 % × 5 reps.'})()}</li></ol>
   </section>
   <p class="small muted">Si el peso sugerido te queda pesado o liviano, cambialo: la app aprende del peso que realmente uses.</p>
   ${cards}
+  ${warn}
   <button class="btn" data-act="finish" ${doneSets?'':'disabled'}>Terminar sesión</button>
-  <button class="btn sec" data-act="cancel">Descartar sesión</button>`;
+  <button class="btn ${confirmCancel?'danger':'sec'}" data-act="cancel">${confirmCancel?'Tocá de nuevo para descartar · se pierde lo cargado':'Descartar sesión'}</button>
+  ${confirmCancel?'<button class="btn sec" data-act="keep">No, seguir entrenando</button>':''}`;
 }
 
 function vResumen(){
   const s=summary;if(!s){view='hoy';return vHoy()}
+  const prs=s.prs||{}, nPR=Object.keys(prs).length;
   const rows=s.items.map(it=>{const r=s.res[it.k]||{c:'hold',t:''};
-    return `<div class="li" style="align-items:center"><span><b>${EX[it.k]?EX[it.k].n:esc(it.k)}</b><br><span class="small muted num">${it.sets.map(x=>fmt(x.w)+'×'+x.r).join(' · ')}</span></span><span class="res ${r.c}">${esc(r.t)}</span></div>`}).join('');
+    return `<div class="li" style="align-items:center"><span><b>${EX[it.k]?EX[it.k].n:esc(it.k)}</b>${prs[it.k]?' <span class="res pr">🏆 Récord</span>':''}<br><span class="small muted num">${it.sets.map(x=>fmt(x.w)+'×'+x.r).join(' · ')}</span></span><span class="res ${r.c}">${esc(r.t)}</span></div>`}).join('');
+  const prCard = nPR?`<section class="card prcard"><h3>🏆 ${nPR===1?'Nuevo récord':nPR+' récords nuevos'}</h3><div class="list">${Object.keys(prs).map(k=>`<div class="li"><span>${EX[k]?EX[k].n:esc(k)}</span><span class="num small">${fmt(prs[k].w)} × ${prs[k].r} · 1RM ≈ ${fmt(prs[k].e)} kg <span class="muted">(antes ${fmt(prs[k].prev)})</span></span></div>`).join('')}</div></section>`:'';
   return `${topBar()}
   <section class="card hero"><p class="eyebrow">Sesión terminada</p><h2>Sesión ${esc(s.plan)}</h2>
     <div class="stats"><div class="stat"><b>${s.nsets}</b><span>series</span></div><div class="stat"><b>${fmt(s.vol)}</b><span>kg de volumen</span></div><div class="stat"><b>${ORDER[S.nextIdx%ORDER.length]}</b><span>próxima sesión</span></div></div>
   </section>
+  ${prCard}
   <section class="card"><h3>Para la próxima</h3><div class="list">${rows}</div>
-  <p class="small muted">El peso sube cuando completás todas las series en el tope del rango. Si dos sesiones seguidas no llegás al mínimo, baja un 10 %.</p></section>
+  <p class="small muted">El peso sube cuando completás todas las series en el tope del rango. Si dos sesiones seguidas no llegás al mínimo, baja un 10 %. Si cargaste algo mal, corregilo desde Historial.</p></section>
   <button class="btn" data-act="tab" data-v="hoy">Listo</button>`;
 }
 
@@ -510,10 +742,10 @@ function vHist(){
   if(!sessions.length) return `${topBar()}<section class="card"><h3>Historial</h3><p class="muted">Todavía no registraste sesiones. Cuando termines la primera aparece acá con cada serie.</p></section>`;
   const cards=sessions.map(s=>{
     const name=s.plan==='MOV'?'Movilidad':'Sesión '+esc(s.plan);
-    const det=(s.items||[]).map(it=>`<div class="li"><span>${EX[it.k]?EX[it.k].n:esc(it.k)}</span><span class="num muted small">${(it.sets||[]).map(x=>fmt(x.w)+'×'+esc(x.r)).join(' · ')}</span></div>`).join('');
+    const det=(s.items||[]).map(it=>`<div class="li"><span>${EX[it.k]?EX[it.k].n:esc(it.k)}${s.prs&&s.prs[it.k]?' 🏆':''}</span><span class="num muted small">${(it.sets||[]).map(x=>fmt(x.w)+'×'+esc(x.r)).join(' · ')}</span></div>`).join('');
     return `<section class="card" style="gap:8px">
-      <div class="row between"><b>${name}</b><span class="small muted">${esc(dLabel(s.ts))}</span></div>
-      <div class="row">${s.rd&&RD[s.rd]?`<span class="pill ${s.rd==='ok'?'good':'warn'}">${RD[s.rd].t}</span>`:''}${s.plan!=='MOV'?`<span class="pill num">${s.nsets} series</span><span class="pill num">${fmt(s.vol)} kg</span>`:'<span class="pill">Recuperación activa</span>'}</div>
+      <div class="row between"><b>${name}</b><span class="row" style="gap:10px"><span class="small muted">${esc(dLabel(s.ts))}</span><button class="howbtn" data-act="edopen" data-id="${esc(s.id)}">Editar</button></span></div>
+      <div class="row">${s.prs&&Object.keys(s.prs).length?`<span class="pill acc">🏆 ${Object.keys(s.prs).length===1?'1 récord':Object.keys(s.prs).length+' récords'}</span>`:''}${s.rd&&RD[s.rd]?`<span class="pill ${s.rd==='ok'?'good':'warn'}">${RD[s.rd].t}</span>`:''}${s.plan!=='MOV'?`<span class="pill num">${s.nsets} series</span><span class="pill num">${fmt(s.vol)} kg</span>`:'<span class="pill">Recuperación activa</span>'}</div>
       ${det?`<details><summary>Ver series</summary><div class="list">${det}</div></details>`:''}
     </section>`}).join('');
   return `${topBar()}${cards}`;
@@ -538,6 +770,7 @@ function vProg(){
     <div class="chart-wrap" id="chartwrap">${chartSVG(h)}<div class="tip" id="tip"></div></div>
     ${rows?`<table><thead><tr><th>Fecha</th><th class="r">Mejor serie</th><th class="r">1RM estimado</th></tr></thead><tbody>${rows}</tbody></table>`:''}
   </section>
+  ${vBody()}
   ${vVolume()}
   <section class="card"><h3>Pesos para la próxima sesión</h3><div class="list">${next}</div></section>`;
 }
@@ -607,12 +840,20 @@ function vAjustes(){
   </section>
   <section class="card">
     <h3>Programa</h3>
-    <p class="small muted">Rotación A → B → C → D (torso, piernas, torso, piernas) según los días que vayas, pensada para 4 por semana. Objetivo: ganar masa muscular, con 8 a 15 repeticiones por serie, 1 o 2 en reserva y descarga cada 5 semanas aproximadamente. Adaptada para cuidar la zona lumbar: sin barra sobre la espalda, sin bisagra de cadera con carga y sin flexionar la columna con peso. Las primeras ${REENTRY} sesiones son de reingreso. Fase actual: <b>${phaseText().pill}</b>.</p>
+    <p class="small muted">Rotación A → B → C → D (torso, piernas, torso, piernas) según los días que vayas, pensada para 4 por semana. Objetivo: ganar masa muscular, con 8 a 15 repeticiones por serie, 1 o 2 en reserva y descarga de una semana (${DELOAD_LEN} sesiones livianas) cada 5 semanas aproximadamente. Adaptada para cuidar la zona lumbar: sin barra sobre la espalda, sin bisagra de cadera con carga y sin flexionar la columna con peso. Las primeras ${REENTRY} sesiones son de reingreso. Fase actual: <b>${phaseText().pill}</b>.</p>
     <button class="btn sec" data-act="reentry">Volver a fase de reingreso</button>
     ${S.deload?'<button class="btn sec" data-act="enddeload">Terminar la descarga ahora</button>':''}
   </section>
+  ${(()=>{const sw=Object.keys(S.swaps||{}).filter(k=>EX[S.swaps[k]]);return sw.length?`<section class="card"><h3>Ejercicios cambiados</h3><p class="small muted">Estos reemplazos se aplican en todas las sesiones.</p><div class="list">${sw.map(k=>`<div class="li" style="align-items:center"><span class="small">${EX[k].n} → <b>${EX[S.swaps[k]].n}</b></span><button class="btn sec small" data-act="unswap" data-k="${k}">Volver al original</button></div>`).join('')}</div></section>`:''})()}
+  <section class="card">
+    <h3>Aviso de descanso</h3>
+    <p class="small muted">${{granted:'Activado: cuando termina el descanso te llega una notificación aunque tengas la pantalla bloqueada. En iPhone funciona solo si agregaste la app a la pantalla de inicio, y puede demorarse.',default:'Si lo activás, te avisa con una notificación cuando termina el descanso aunque tengas el celular bloqueado.',denied:'Las notificaciones están bloqueadas para esta página. Para activarlas, habilitalas en la configuración del navegador o del teléfono.',no:'Este navegador no permite notificaciones: el pitido suena solo con la app abierta.'}[notifState()]}</p>
+    ${notifState()==='default'?'<button class="btn sec" data-act="notif">Activar avisos</button>':''}
+    ${notifState()==='granted'?'<button class="btn sec" data-act="testnotif">Probar aviso en 5 segundos</button>':''}
+  </section>
   <section class="card">
     <h3>Respaldo</h3>
+    <p class="small muted">${S.lastBackup?'Último respaldo: '+esc(dLabel(S.lastBackup,{day:'numeric',month:'long'}))+'.':'Todavía no descargaste ningún respaldo.'} Te lo recuerdo cada ${BACKUP_DAYS} días.</p>
     <button class="btn sec" data-act="download">Descargar respaldo (.json)</button>
     <button class="btn sec" data-act="export">Copiar respaldo</button>
     <label class="small muted" for="impfile">Restaurar desde un archivo:</label>
@@ -629,6 +870,7 @@ function vAjustes(){
   </section>`;
 }
 function msg(t){const m=$('#msg');if(m)m.textContent=t}
+function msg2(el,t){let p=el.nextElementSibling;if(!p||!p.classList.contains('hint')){p=document.createElement('p');p.className='small muted hint';el.after(p)}p.textContent=t}
 
 
 /* ===================== Técnica: figuras animadas ===================== */
@@ -680,6 +922,21 @@ const HOW={
   curl_fem:{m:'Isquiotibiales',c:['Boca abajo en la máquina, rodillas justo pasando el borde del banco y el rodillo sobre los tobillos.','Flexioná las rodillas llevando el rodillo hacia los glúteos sin levantar la cadera.','Bajá lento, sin dejar caer el peso.']},
   ext_cuad:{m:'Cuádriceps',c:['Sentado con la espalda apoyada y el rodillo sobre los tobillos, rodilla alineada con el eje de la máquina.','Extendé las piernas hasta casi bloquear y apretá un segundo arriba.','Bajá controlado hasta unos 90°.']},
   gemelos:{m:'Gemelos y sóleo',c:['En la prensa, con las piernas extendidas y la punta de los pies en el borde inferior de la plataforma.','Empujá con la punta de los pies estirando los tobillos al máximo.','Bajá hasta sentir estirar la pantorrilla. La espalda queda apoyada todo el tiempo.']},
+  press_maq:{m:'Pectoral, tríceps y deltoides anterior',c:['Ajustá el asiento para que las manijas queden a la altura del pecho medio.','Espalda apoyada y escápulas juntas; empujá hasta casi extender los codos.','Volvé lento hasta sentir estirar el pecho, sin despegar la espalda.']},
+  press_inc_maq:{m:'Pectoral superior, deltoides anterior y tríceps',c:['Asiento a una altura en que las manijas arranquen a la altura de la parte alta del pecho.','Empujá hacia arriba y adelante sin despegar la espalda del respaldo.','Bajá controlado, con los codos algo por debajo de los hombros.']},
+  remo_polea:{m:'Dorsal, romboides y bíceps',c:['Sentado con los pies apoyados y las rodillas algo flexionadas, torso erguido.','Tirá de la manija hacia el ombligo llevando los codos atrás y juntando las escápulas.','Volvé estirando los brazos sin inclinar el torso hacia adelante: la zona lumbar queda quieta.']},
+  press_hombro_maq:{m:'Deltoides y tríceps',c:['Asiento con las manijas a la altura de los hombros y la espalda bien apoyada.','Empujá hacia arriba hasta casi extender los codos.','Bajá controlado sin arquear la zona lumbar.']},
+  pajaros_maq:{m:'Deltoides posterior y trapecio medio',c:['En la máquina de aperturas, sentado mirando al respaldo, con el pecho apoyado.','Abrí los brazos hacia atrás con los codos apenas flexionados, hasta la línea de los hombros.','Volvé lento sin dejar que las placas se toquen.']},
+  triceps_cabeza:{m:'Tríceps (sobre todo la porción larga)',c:['De espaldas a la polea, soga tomada detrás de la cabeza, un pie adelante y abdomen firme.','Extendé los codos hacia adelante y arriba, con los codos apuntando al frente.','Volvé hasta sentir estirar el tríceps, sin arquear la espalda.']},
+  prensa_hor:{m:'Cuádriceps y glúteos',c:['Sentado con la espalda completamente apoyada y los pies al ancho de la cadera.','Doblá las rodillas hasta unos 90° sin que la cadera se despegue del asiento.','Empujá sin bloquear del todo las rodillas.']},
+  bulgara:{m:'Cuádriceps y glúteos',c:['Empeine del pie de atrás apoyado en un banco, mancuernas a los costados y torso erguido.','Bajá en vertical hasta que el muslo de adelante quede casi paralelo al piso.','Subí empujando con todo el pie de adelante. Completá un lado y después el otro.']},
+  curl_fem_sent:{m:'Isquiotibiales',c:['Sentado con la rodilla alineada con el eje de la máquina y el rodillo sobre los tobillos; trabá los muslos con la almohadilla.','Flexioná las rodillas llevando los talones hacia abajo y atrás.','Volvé lento hasta casi estirar las piernas.']},
+  gemelos_sent:{m:'Sóleo y gemelos',c:['Sentado con la almohadilla sobre los muslos, cerca de las rodillas, y la punta de los pies en el borde.','Subí los talones lo más alto que puedas y apretá un segundo.','Bajá hasta sentir estirar la pantorrilla.']},
+  jalon_neutro:{m:'Dorsal ancho y bíceps',c:['Sentado con los muslos trabados, manija de agarre neutro (palmas enfrentadas).','Bajá la manija al pecho alto llevando los codos hacia abajo y pegados al cuerpo.','Subí controlado hasta estirar los brazos.']},
+  laterales_polea:{m:'Deltoides lateral',c:['De costado a la polea baja, tomá la manija con la mano más alejada.','Elevá el brazo hacia el costado hasta la altura del hombro, codo apenas flexionado.','Bajá lento, sin inclinar el torso.']},
+  curl_polea:{m:'Bíceps',c:['De pie frente a la polea baja con barra o soga, codos pegados al torso.','Flexioná los codos sin mover los hombros.','Bajá controlado hasta casi estirar los brazos; la polea mantiene la tensión abajo.']},
+  curl_martillo:{m:'Braquial, braquiorradial y bíceps',c:['De pie con las palmas enfrentadas (agarre de martillo) y los codos pegados.','Subí las mancuernas sin girar las muñecas.','Bajá controlado sin balancear el cuerpo.']},
+  hip_thrust_maq:{m:'Glúteos e isquiotibiales',c:['Espalda alta apoyada en el respaldo y el cinturón o almohadilla sobre la cadera.','Subí la cadera apretando los glúteos hasta que el torso quede paralelo al piso.','Pausá un segundo arriba y bajá controlado, sin arquear la zona lumbar.']},
   pallof:{m:'Core: oblicuos y transverso, sin flexionar la columna',c:['Parate de costado a la polea, con el cable a la altura del pecho y la manija tomada con las dos manos.','Extendé los brazos hacia adelante resistiendo que el cable te gire el torso.','Sostené 2 segundos, volvé al pecho y después hacé el otro lado.']}
 };
 const lerp=(a,b,t)=>[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];
@@ -726,21 +983,23 @@ function howFrame(now){
 }
 const reduceMotion=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
 function openHow(k){
-  howK=k;howPlay=!reduceMotion;howTman=0;const e=EX[k],h=HOW[k];
+  editId=null;const hasFig=!!FIG[k];
+  howK=hasFig?k:null;howPlay=!reduceMotion;howTman=0;const e=EX[k],h=HOW[k]||{m:'—',c:[]};
   const q=encodeURIComponent(e.n+' técnica');
   $('#sheet').innerHTML=`<div class="sheet-in" role="dialog" aria-modal="true" aria-labelledby="shT">
     <div class="row between"><h3 id="shT">${e.n}</h3><button class="btn sec small" data-act="howclose" aria-label="Cerrar">✕</button></div>
-    <div class="figbox"><svg viewBox="0 -22 200 178" role="img" aria-label="Animación de ${e.n}"><g id="fig"></g></svg></div>
+    ${hasFig?`<div class="figbox"><svg viewBox="0 -22 200 178" role="img" aria-label="Animación de ${e.n}"><g id="fig"></g></svg></div>
     <div class="row" style="flex-wrap:nowrap">
       <button class="btn sec small" data-act="howplay" id="playbtn" style="min-width:88px">${howPlay?'Pausa':'Reproducir'}</button>
       <input type="range" id="scrub" min="0" max="100" value="0" aria-label="Recorrer el movimiento" style="flex:1;accent-color:var(--accent)">
     </div>
-    <p class="small muted" id="phase" style="text-align:center">Posición inicial</p>
+    <p class="small muted" id="phase" style="text-align:center">Posición inicial</p>`:''}
     <p class="small"><b>Trabaja:</b> ${h.m}</p>
     <ol class="mob">${h.c.map(c=>`<li>${c}</li>`).join('')}</ol>
     <a class="btn sec" style="text-align:center;text-decoration:none" href="https://www.youtube.com/results?search_query=${q}" target="_blank" rel="noopener">Ver videos de la técnica ↗</a>
   </div>`;
   $('#sheet').hidden=false;
+  if(!hasFig)return;
   howT0=performance.now();cancelAnimationFrame(howRaf);howRaf=requestAnimationFrame(howFrame);
   $('#scrub').addEventListener('input',ev=>{howPlay=false;$('#playbtn').textContent='Reproducir';howTman=ev.target.value/100;cancelAnimationFrame(howRaf);howFrame(performance.now())});
 }
@@ -749,8 +1008,8 @@ function toggleHow(){
   howPlay=!howPlay;$('#playbtn').textContent=howPlay?'Pausa':'Reproducir';
   if(howPlay){const u0=howTman*0.38+0.12;howT0=performance.now()-u0*CYCLE;cancelAnimationFrame(howRaf);howRaf=requestAnimationFrame(howFrame)}
 }
-$('#sheet').addEventListener('click',ev=>{if(ev.target.id==='sheet')closeHow()});
-document.addEventListener('keydown',ev=>{if(ev.key==='Escape'&&howK)closeHow()});
+$('#sheet').addEventListener('click',ev=>{if(ev.target.id==='sheet')closeSheet()});
+document.addEventListener('keydown',ev=>{if(ev.key==='Escape'&&!$('#sheet').hidden)closeSheet()});
 
 /* ===================== Eventos ===================== */
 app.addEventListener('input',ev=>{
@@ -758,25 +1017,29 @@ app.addEventListener('input',ev=>{
   if(t.dataset.f&&draft){const it=draft.items[+t.dataset.i],s=it.sets[+t.dataset.s];
     if(t.dataset.f==='w')s.w=num(t.value);else{const n=num(t.value);s.r=n==null?null:Math.round(n)}
     draftSave()}
+  if(t.dataset.note){const k=t.dataset.note,v=t.value;if(v.trim())S.notes[k]=v;else delete S.notes[k];lsSave()}
 });
-app.addEventListener('change',ev=>{if(ev.target.id==='exsel'){progEx=ev.target.value;render()}
+app.addEventListener('change',ev=>{if(ev.target.dataset&&ev.target.dataset.note){persist();return}
+  if(ev.target.id==='exsel'){progEx=ev.target.value;render()}
   if(ev.target.id==='impfile'&&ev.target.files[0]){ev.target.files[0].text().then(t=>{$('#imp').value=t;document.querySelector('[data-act=import]').click()})}});
 document.addEventListener('click',async ev=>{
   const b=ev.target.closest('[data-act]');if(!b)return;
   const a=b.dataset.act;
   if(a!=='reset')confirmReset=false;
+  if(a!=='cancel')confirmCancel=false;
+  const rerender=()=>{const y=window.scrollY;render();window.scrollTo(0,y)};
   switch(a){
     case 'tab':view=b.dataset.v;if(view==='hoy')summary=null;render();window.scrollTo(0,0);break;
     case 'plan':todayPlan=b.dataset.p;render();break;
     case 'rd':todayRd=b.dataset.r;render();break;
     case 'start':startSession();break;
     case 'mob':logMobility();break;
-    case 'deload':S.deload=3;persist();render();break;
+    case 'deload':S.deload=DELOAD_LEN;persist();render();break;
     case 'enddeload':S.deload=0;S.sinceDeload=0;persist();render();break;
     case 'done':{
       audio();
       const i=+b.dataset.i,j=+b.dataset.s,it=draft.items[i],s=it.sets[j];
-      s.done=!s.done;
+      s.done=!s.done;finishWarn=null;
       if(s.done){
         if(it.sets[j+1]&&it.sets[j+1].w==null)it.sets[j+1].w=s.w;
         const last=draft.items.every(x=>x.sets.every(y=>y.done));
@@ -788,10 +1051,30 @@ document.addEventListener('click',async ev=>{
     case 'how':openHow(b.dataset.k);break;
     case 'howclose':closeHow();break;
     case 'howplay':toggleHow();break;
-    case 'finish':finishSession();break;
-    case 'cancel':draft=null;draftSave();stopTimer();render();window.scrollTo(0,0);break;
-    case 't-plus':if(tmr){tmr.end+=15000;tmr.total+=15;drawTimer()}break;
-    case 't-minus':if(tmr){tmr.end-=15000;drawTimer()}break;
+    case 'finish':finishSession(false);break;
+    case 'finishforce':finishSession(true);break;
+    case 'cancel':
+      if(!confirmCancel){confirmCancel=true;rerender();break}
+      confirmCancel=false;finishWarn=null;draft=null;draftSave();stopTimer();render();window.scrollTo(0,0);break;
+    case 'keep':rerender();break;
+    case 'swopen':openSwap(+b.dataset.i);break;
+    case 'swclose':closeSheet();break;
+    case 'swap':doSwap(+b.dataset.i,b.dataset.k,b.dataset.perm==='1');break;
+    case 'unswap':delete S.swaps[b.dataset.k];persist();render();break;
+    case 'note':{const k=b.dataset.k;notesOpen[k]=!notesOpen[k];if(!notesOpen[k])persist();rerender();if(notesOpen[k]){const ta=document.querySelector(`[data-note="${k}"]`);if(ta)ta.focus()}break}
+    case 'notif':askNotif();break;
+    case 'testnotif':swPost({type:'timer',end:Date.now()+5000,label:'Prueba',force:true});msg2(b,'Listo: bloqueá el celular y esperá 5 segundos.');break;
+    case 'edopen':openEdit(b.dataset.id);break;
+    case 'edclose':closeSheet();break;
+    case 'edsave':saveEdit(editId);closeSheet();rerender();break;
+    case 'eddel':
+      if(confirmDel!==editId){confirmDel=editId;b.textContent='Tocá de nuevo para borrar la sesión';break}
+      deleteSession(editId);closeSheet();rerender();break;
+    case 'bsnooze':S.backupSnooze=Date.now()+3*864e5;lsSave();rerender();break;
+    case 'badd':if(addBody())rerender();break;
+    case 'bdel':body=body.filter(x=>String(x.ts)!==b.dataset.ts);persistBody();rerender();break;
+    case 't-plus':if(tmr){tmr.end+=15000;tmr.total+=15;drawTimer();syncTimerSW()}break;
+    case 't-minus':if(tmr){tmr.end-=15000;drawTimer();syncTimerSW()}break;
     case 't-skip':stopTimer();break;
     case 'savewt':
       document.querySelectorAll('[data-wt]').forEach(inp=>{const k=inp.dataset.wt,v=num(inp.value);
@@ -800,22 +1083,22 @@ document.addEventListener('click',async ev=>{
       persist();render();break;
     case 'reentry':S.phaseStart=S.done;S.deload=0;persist();render();break;
     case 'export':
-      try{await navigator.clipboard.writeText(JSON.stringify({S,sessions}));msg('Respaldo copiado. Pegalo en una nota o mandátelo por mail.')}
-      catch(e){$('#imp').value=JSON.stringify({S,sessions});msg('No pude copiar automáticamente: el respaldo quedó en el cuadro de arriba, copialo a mano.')}
+      try{await navigator.clipboard.writeText(backupData());markBackup();msg('Respaldo copiado. Pegalo en una nota o mandátelo por mail.')}
+      catch(e){$('#imp').value=backupData();markBackup();msg('No pude copiar automáticamente: el respaldo quedó en el cuadro de arriba, copialo a mano.')}
       break;
     case 'download':{
-      const blob=new Blob([JSON.stringify({S,sessions})],{type:'application/json'});const a=document.createElement('a');
+      const blob=new Blob([backupData()],{type:'application/json'});markBackup();if(view==='hoy')setTimeout(render,50);const a=document.createElement('a');
       a.href=URL.createObjectURL(blob);a.download='entrenador-respaldo-'+new Date().toISOString().slice(0,10)+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),2000);msg('Respaldo descargado.');break}
     case 'import':{
       let d;try{d=JSON.parse($('#imp').value)}catch(e){msg('El texto pegado no es un respaldo válido.');break}
       if(!d||!d.S||!Array.isArray(d.sessions)){msg('Falta información en el respaldo.');break}
-      S=normalize(d.S);sessions=d.sessions.filter(s=>s&&s.id&&s.ts).sort((x,y)=>y.ts-x.ts);lsSave();
+      S=normalize(d.S);sessions=d.sessions.filter(s=>s&&s.id&&s.ts).sort((x,y)=>y.ts-x.ts);body=Array.isArray(d.body)?d.body:[];S.lastBackup=Date.now();lsSave();
       if(cloud.db){const list=sessions.slice(),sn=clone(S);queue(async()=>{for(const s of list)await sessCol().doc(String(s.id)).set(stripId(s));await profRef().set({S:sn})})}
       render();msg('Respaldo restaurado.');break}
     case 'reset':
       if(!confirmReset){confirmReset=true;render();break}
       confirmReset=false;
-      {const old=sessions.slice();S=freshState();sessions=[];draft=null;draftSave();lsSave();
+      {const old=sessions.slice();S=freshState();sessions=[];body=[];draft=null;draftSave();lsSave();
        if(cloud.db){const sn=clone(S);queue(async()=>{for(const s of old)await sessCol().doc(String(s.id)).delete();await profRef().set({S:sn})})}}
       view='hoy';render();break;
   }
